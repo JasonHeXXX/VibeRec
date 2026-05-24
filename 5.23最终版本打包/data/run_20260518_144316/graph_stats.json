@@ -1,0 +1,53 @@
+{
+  "description": "用户-视频二分图邻接表统计",
+  "data_structure": "邻接表 (Adjacency List): defaultdict(set)",
+  "num_users": 10000,
+  "num_videos": 92394,
+  "total_edges": 656181,
+  "avg_user_degree": 56.93,
+  "max_user_degree": 98,
+  "avg_video_degree": 6.16,
+  "max_video_degree": 6872,
+  "video_degree_distribution_top10": [
+    [
+      6302,
+      6872
+    ],
+    [
+      17827,
+      5222
+    ],
+    [
+      88193,
+      3610
+    ],
+    [
+      90324,
+      3482
+    ],
+    [
+      1838,
+      3206
+    ],
+    [
+      85146,
+      2800
+    ],
+    [
+      87143,
+      2762
+    ],
+    [
+      67295,
+      2752
+    ],
+    [
+      66516,
+      2749
+    ],
+    [
+      94802,
+      2693
+    ]
+  ]
+}

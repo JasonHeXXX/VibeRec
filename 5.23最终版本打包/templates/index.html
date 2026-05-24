@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>短视频推荐系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<style>
+/* ============================================================
+   CSS Custom Properties — 4 背景模式 × 6 强调色
+   ============================================================ */
+
+/* ---- 暗色模式（默认） ---- */
+:root, [data-bg="dark"] {
+  --bg: #0A0A0B;
+  --surface1: #161618;
+  --surface2: #1E1E22;
+  --surface3: #28282E;
+  --border: #2A2A30;
+  --borderVisible: #3A3A42;
+  --text1: #F4F4F5;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+  --text4: #52525B;
+  --glow-color: #000;
+}
+/* ---- 亮色模式 ---- */
+[data-bg="light"] {
+  --bg: #FAFAFA;
+  --surface1: #FFFFFF;
+  --surface2: #F5F5F5;
+  --surface3: #EBEBEB;
+  --border: #E5E5E5;
+  --borderVisible: #D4D4D4;
+  --text1: #18181B;
+  --text2: #52525B;
+  --text3: #A1A1AA;
+  --text4: #D4D4D8;
+  --glow-color: #fff;
+}
+/* ---- 浅灰模式 ---- */
+[data-bg="slate"] {
+  --bg: #1E1E24;
+  --surface1: #28282E;
+  --surface2: #32323A;
+  --surface3: #3C3C46;
+  --border: #34343E;
+  --borderVisible: #44444E;
+  --text1: #F0F0F2;
+  --text2: #A0A0A8;
+  --text3: #6E6E78;
+  --text4: #4E4E58;
+}
+/* ---- 夜间护眼模式 ---- */
+[data-bg="warm"] {
+  --bg: #1A1410;
+  --surface1: #241D18;
+  --surface2: #2D2520;
+  --surface3: #382F28;
+  --border: #3D322A;
+  --borderVisible: #4D4038;
+  --text1: #F0E6DC;
+  --text2: #C4B8A8;
+  --text3: #8A7E72;
+  --text4: #5C5248;
+}
+
+/* ---- 强调色 ---- */
+:root, [data-accent="rose"] {
+  --accent: #EA4C89;
+  --accentSubtle: rgba(234,76,137,0.12);
+  --accentGlow: rgba(234,76,137,0.25);
+}
+[data-accent="ocean"] {
+  --accent: #3B82F6;
+  --accentSubtle: rgba(59,130,246,0.12);
+  --accentGlow: rgba(59,130,246,0.25);
+}
+[data-accent="forest"] {
+  --accent: #10B981;
+  --accentSubtle: rgba(16,185,129,0.12);
+  --accentGlow: rgba(16,185,129,0.25);
+}
+[data-accent="violet"] {
+  --accent: #8B5CF6;
+  --accentSubtle: rgba(139,92,246,0.12);
+  --accentGlow: rgba(139,92,246,0.25);
+}
+[data-accent="sunset"] {
+  --accent: #F59E0B;
+  --accentSubtle: rgba(245,158,11,0.12);
+  --accentGlow: rgba(245,158,11,0.25);
+}
+[data-accent="mono"] {
+  --accent: #9CA3AF;
+  --accentSubtle: rgba(156,163,175,0.12);
+  --accentGlow: rgba(156,163,175,0.25);
+}
+
+/* 通用 */
+:root {
+  --success: #10B981; --warning: #F59E0B; --error: #EF4444;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --space-xs:4px; --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:32px; --space-2xl:48px; --space-3xl:64px;
+  --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-xl:24px; --radius-pill:999px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --duration-fast:150ms; --duration-normal:250ms; --duration-slow:400ms;
+  --sidebar-width:260px; --sidebar-hidden:-252px;
+}
+
+/* ============================================================
+   Base Reset
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font);
+  font-size: 14px; font-weight: 400; line-height: 1.5;
+  color: var(--text1); background: var(--bg);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  transition: background var(--duration-normal) var(--ease-out), color var(--duration-normal) var(--ease-out);
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { opacity: 0.8; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--borderVisible); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text4); }
+
+/* ============================================================
+   Loading Screen
+   ============================================================ */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.5s var(--ease), visibility 0.5s var(--ease);
+}
+#loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.loading-container { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+.loading-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+.loading-ring.outer { width: 110px; height: 110px; border-top-color: var(--accent); border-right-color: var(--accent); animation: spin-clockwise 1.2s linear infinite; }
+.loading-ring.mid { width: 80px; height: 80px; border-bottom-color: var(--text3); border-left-color: var(--text3); animation: spin-counter 0.9s linear infinite; }
+.loading-ring.inner { width: 50px; height: 50px; border-top-color: var(--accent); border-left-color: rgba(128,128,128,0.3); animation: spin-clockwise 0.6s linear infinite; }
+.loading-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite; }
+.loading-label { position: absolute; bottom: -36px; font-size: 12px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+@keyframes spin-clockwise { to { transform: rotate(360deg); } }
+@keyframes spin-counter { to { transform: rotate(-360deg); } }
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; box-shadow: 0 0 8px var(--accentGlow); }
+  50% { transform: scale(1.8); opacity: 1; box-shadow: 0 0 20px var(--accentGlow); }
+}
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
+#sidebar-trigger { position: fixed; left: 0; top: 0; width: 16px; height: 100%; z-index: 100; }
+#sidebar {
+  position: fixed; left: 0; top: 0;
+  width: var(--sidebar-width); height: 100%;
+  background: var(--surface1);
+  border-right: 1px solid var(--border);
+  z-index: 200;
+  transform: translateX(var(--sidebar-hidden));
+  transition: transform var(--duration-slow) var(--ease);
+  display: flex; flex-direction: column;
+  padding: var(--space-lg) 0;
+}
+#sidebar.open { transform: translateX(0); }
+#sidebar .sidebar-edge {
+  position: absolute; right: 0; top: 0; width: 4px; height: 100%;
+  background: linear-gradient(180deg, var(--accent), transparent 60%);
+  opacity: 0.5;
+}
+#sidebar.open .sidebar-edge { opacity: 0; }
+
+.sidebar-logo {
+  padding: 0 var(--space-lg); margin-bottom: var(--space-xl);
+  display: flex; align-items: center; gap: var(--space-sm);
+}
+.sidebar-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: var(--accent); border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff; font-weight: 700;
+}
+.sidebar-logo .logo-text { font-size: 15px; font-weight: 600; color: var(--text1); white-space: nowrap; }
+
+.sidebar-nav { flex: 1; padding: 0 var(--space-sm); overflow-y: auto; }
+.sidebar-nav .nav-section { font-size: 11px; font-weight: 500; color: var(--text4); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-sm) var(--space-sm) var(--space-xs); }
+.sidebar-nav .nav-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 10px var(--space-sm); margin: 2px 0;
+  border-radius: var(--radius-md); cursor: pointer;
+  font-size: 14px; font-weight: 400; color: var(--text2);
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap; user-select: none;
+}
+.sidebar-nav .nav-item:hover { background: var(--surface3); color: var(--text1); }
+.sidebar-nav .nav-item.active { background: var(--accentSubtle); color: var(--accent); font-weight: 500; }
+.sidebar-nav .nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+
+/* ============================================================
+   Theme Panel (sidebar bottom, hover expand)
+   ============================================================ */
+.sidebar-theme {
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--border);
+  position: relative;
+}
+.theme-toggle-btn {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--borderVisible);
+  background: var(--surface2);
+  color: var(--text2);
+  font-family: var(--font); font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+  width: 100%; justify-content: center;
+}
+.theme-toggle-btn:hover { border-color: var(--accent); color: var(--text1); background: var(--surface3); }
+.theme-toggle-btn .btn-arrow {
+  display: inline-block; transition: transform var(--duration-normal) var(--ease);
+  font-size: 10px;
+}
+
+/* Theme dropdown panel */
+.theme-panel {
+  position: absolute; bottom: 100%; left: var(--space-md); right: var(--space-md);
+  background: var(--surface2);
+  border: 1px solid var(--borderVisible);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  opacity: 0; visibility: hidden; transform: translateY(8px);
+  transition: all var(--duration-normal) var(--ease);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 300;
+}
+.sidebar-theme:hover .theme-panel,
+.theme-panel:hover { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.theme-panel .panel-section { margin-bottom: var(--space-sm); }
+.theme-panel .panel-section:last-child { margin-bottom: 0; }
+.theme-panel .panel-label {
+  font-size: 10px; font-weight: 500; color: var(--text4);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: var(--space-xs);
+}
+
+/* Background mode pills */
+.bg-mode-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.bg-mode-pill {
+  padding: 5px 12px; border-radius: var(--radius-pill);
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  border: 1.5px solid var(--borderVisible);
+  background: var(--surface3); color: var(--text3);
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap; user-select: none;
+}
+.bg-mode-pill:hover { border-color: var(--text3); color: var(--text1); }
+.bg-mode-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accentSubtle); }
+
+/* Accent dots */
+.accent-list { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+.accent-dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+}
+.accent-dot:hover { transform: scale(1.15); }
+.accent-dot.active { border-color: var(--text1); box-shadow: 0 0 10px var(--accentGlow); }
+.accent-dot.rose { background: #EA4C89; }
+.accent-dot.ocean { background: #3B82F6; }
+.accent-dot.forest { background: #10B981; }
+.accent-dot.violet { background: #8B5CF6; }
+.accent-dot.sunset { background: #F59E0B; }
+.accent-dot.mono { background: #9CA3AF; }
+
+/* ============================================================
+   Main Content
+   ============================================================ */
+#main {
+  height: 100%; margin-left: 8px;
+  padding: var(--space-xl); overflow-y: auto;
+  transition: margin-left var(--duration-slow) var(--ease);
+}
+.page { display: none; }
+.page.active { display: block; }
+
+.page-header {
+  margin-bottom: var(--space-xl);
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--space-md);
+}
+.page-header h1 {
+  font-size: 28px; font-weight: 700; color: var(--text1);
+  letter-spacing: -0.02em; line-height: 1.2;
+}
+.page-header .page-subtitle { font-size: 14px; color: var(--text3); margin-top: 2px; }
+
+/* ============================================================
+   Centered Hero Search (推荐 & 热度预测 empty state)
+   ============================================================ */
+.hero-search {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+}
+.hero-search .hero-icon { font-size: 48px; margin-bottom: var(--space-lg); opacity: 0.6; }
+.hero-search .hero-title { font-size: 24px; font-weight: 700; color: var(--text1); letter-spacing: -0.02em; margin-bottom: var(--space-xs); }
+.hero-search .hero-desc { font-size: 14px; color: var(--text3); margin-bottom: var(--space-xl); max-width: 480px; line-height: 1.6; }
+.hero-search .hero-input-group {
+  display: flex; gap: var(--space-sm); align-items: center;
+  flex-wrap: wrap; justify-content: center;
+}
+.hero-search .hero-input-group .input-search { width: 260px; }
+
+/* ============================================================
+   Capsule Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-xs);
+  padding: 8px 20px;
+  font-family: var(--font); font-size: 13px; font-weight: 500;
+  border-radius: var(--radius-pill); cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap; user-select: none; line-height: 1.4;
+}
+.btn-outline { background: transparent; border: 1.5px solid var(--text2); color: var(--text1); }
+.btn-outline:hover { background: var(--text1); color: var(--bg); border-color: var(--text1); }
+.btn-primary { background: var(--accent); color: #fff; border: 1.5px solid var(--accent); }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-ghost { background: transparent; border: 1.5px solid transparent; color: var(--text2); }
+.btn-ghost:hover { color: var(--text1); background: var(--surface3); }
+.btn-sm { padding: 5px 14px; font-size: 12px; }
+.btn-lg { padding: 12px 28px; font-size: 15px; }
+
+/* ============================================================
+   Cards & KPI
+   ============================================================ */
+.card {
+  background: var(--surface1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: var(--space-lg);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.card:hover { border-color: var(--borderVisible); }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
+.card-title { font-size: 15px; font-weight: 600; color: var(--text1); }
+.card-subtitle { font-size: 12px; color: var(--text3); }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-lg); }
+.kpi-card {
+  background: var(--surface1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: var(--space-lg);
+  position: relative; overflow: hidden;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.kpi-card:hover { border-color: var(--borderVisible); transform: translateY(-1px); }
+.kpi-card .kpi-accent-bar { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--accent); opacity: 0.6; }
+.kpi-card .kpi-label { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-xs); }
+.kpi-card .kpi-value { font-size: 32px; font-weight: 700; color: var(--text1); letter-spacing: -0.02em; line-height: 1; }
+.kpi-card .kpi-sub { font-size: 12px; color: var(--text4); margin-top: var(--space-xs); }
+
+/* ============================================================
+   Input & Search
+   ============================================================ */
+.search-group { display: flex; gap: var(--space-sm); align-items: center; }
+.input-search {
+  background: var(--surface3); border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill); padding: 10px 18px;
+  font-family: var(--font); font-size: 14px; color: var(--text1);
+  outline: none; width: 280px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.input-search::placeholder { color: var(--text4); }
+.input-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accentSubtle); }
+
+/* ============================================================
+   Data Table
+   ============================================================ */
+.data-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  background: var(--surface2); color: var(--text3); font-weight: 500; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text1); white-space: nowrap; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--accentSubtle); }
+.data-table .badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 500; background: var(--accentSubtle); color: var(--accent); }
+.data-table .badge.alt { background: rgba(128,128,128,0.08); color: var(--text2); }
+
+/* ============================================================
+   Charts & Feed
+   ============================================================ */
+.chart-box { background: var(--surface1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-md); margin-bottom: var(--space-md); }
+
+.feed-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.feed-item {
+  display: flex; gap: var(--space-md); align-items: center;
+  background: var(--surface1); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-md);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.feed-item:hover { border-color: var(--borderVisible); background: var(--surface2); }
+.feed-item .feed-rank { font-size: 20px; font-weight: 700; color: var(--accent); width: 36px; text-align: center; flex-shrink: 0; }
+.feed-item .feed-info { flex: 1; min-width: 0; }
+.feed-item .feed-title { font-size: 14px; font-weight: 500; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed-item .feed-meta { font-size: 12px; color: var(--text3); margin-top: 2px; display: flex; gap: var(--space-md); }
+.feed-item .feed-score { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+/* ============================================================
+   State Messages & Analysis
+   ============================================================ */
+.state-message { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-3xl); text-align: center; color: var(--text3); }
+.state-message .state-icon { font-size: 40px; margin-bottom: var(--space-md); opacity: 0.5; }
+.state-message .state-text { font-size: 14px; }
+.spinner-inline { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin-clockwise 0.7s linear infinite; margin: 0 auto var(--space-md); }
+
+.analysis-text {
+  background: var(--surface2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: var(--space-md) var(--space-lg);
+  font-size: 14px; color: var(--text2); line-height: 1.7;
+}
+
+/* ============================================================
+   Profile Banner (推荐页用户画像)
+   ============================================================ */
+.profile-banner {
+  display: flex; align-items: center; gap: var(--space-xl);
+  flex-wrap: wrap; padding: var(--space-xs) 0;
+}
+.profile-banner .profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--accentSubtle); border: 2px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700; color: var(--accent);
+  flex-shrink: 0; overflow: hidden; padding: 4px;
+  min-width: 72px;
+}
+.profile-banner .profile-main { flex: 1; min-width: 200px; }
+.profile-banner .profile-name {
+  font-size: 22px; font-weight: 700; color: var(--text1); letter-spacing: -0.02em;
+}
+.profile-banner .profile-meta {
+  font-size: 15px; color: var(--text3); margin-top: 2px;
+}
+.profile-stats {
+  display: flex; gap: var(--space-lg); flex-wrap: wrap;
+  align-items: center;
+}
+.profile-stat {
+  text-align: center; min-width: 60px;
+}
+.profile-stat .stat-num {
+  font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1.1;
+}
+.profile-stat .stat-label {
+  font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.03em;
+}
+.profile-tags {
+  display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: var(--space-sm);
+}
+.profile-tags .tag {
+  padding: 4px 14px; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500;
+  background: var(--accentSubtle); color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+/* ============================================================
+   Video Info Banner (热度预测页)
+   ============================================================ */
+.video-info-banner {
+  display: flex; align-items: flex-start; gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+.video-info-banner .vi-main { flex: 1; min-width: 220px; }
+.video-info-banner .vi-title {
+  font-size: 20px; font-weight: 700; color: var(--text1); letter-spacing: -0.01em; line-height: 1.3;
+}
+.video-info-banner .vi-meta {
+  display: flex; gap: var(--space-lg); flex-wrap: wrap; margin-top: var(--space-sm);
+  font-size: 15px; color: var(--text3);
+}
+.video-info-banner .vi-meta strong { color: var(--text1); }
+.video-info-banner .vi-stats {
+  display: flex; gap: var(--space-lg); align-items: center; flex-wrap: wrap;
+}
+.video-info-banner .vi-stat {
+  text-align: center; min-width: 70px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface3); border-radius: var(--radius-md);
+}
+.video-info-banner .vi-stat .vi-stat-num {
+  font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1.1;
+}
+.video-info-banner .vi-stat .vi-stat-label {
+  font-size: 11px; color: var(--text4); text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+/* Larger fonts for feed items */
+.page .feed-item .feed-title { font-size: 16px; }
+.page .feed-item .feed-meta { font-size: 13px; }
+.page .feed-item .feed-score { font-size: 15px; }
+.page .feed-item .feed-rank { font-size: 24px; }
+
+/* Wider inputs on these pages */
+.page .input-search { font-size: 15px; padding: 12px 20px; }
+
+/* Analysis text larger */
+.page .analysis-text { font-size: 15px; }
+
+/* Heat ranking panel */
+.ranking-panel {
+  max-height: 460px; overflow-y: auto;
+}
+.ranking-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+  border-left: 3px solid transparent;
+}
+.ranking-item:hover { background: var(--surface3); }
+.ranking-item.searched {
+  background: var(--accentSubtle);
+  border-left-color: var(--accent);
+}
+.ranking-item .rank-num {
+  font-size: 13px; font-weight: 600; color: var(--text3);
+  width: 28px; text-align: center; flex-shrink: 0;
+}
+.ranking-item:nth-child(-n+3) .rank-num { color: var(--accent); font-weight: 700; }
+.ranking-item .rank-title {
+  font-size: 13px; color: var(--text1); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ranking-item .rank-heat {
+  font-size: 12px; color: var(--text3); flex-shrink: 0;
+}
+.ranking-item.searched .rank-title,
+.ranking-item.searched .rank-heat,
+.ranking-item.searched .rank-num { color: var(--accent); font-weight: 600; }
+.ranking-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-sm);
+  font-size: 13px; color: var(--text3);
+}
+.ranking-badge {
+  font-size: 11px; padding: 2px 10px; border-radius: var(--radius-pill);
+  background: var(--accentSubtle); color: var(--accent); font-weight: 500;
+}
+
+/* ============================================================
+   Grid & Toast
+   ============================================================ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.toast {
+  position: fixed; top: var(--space-lg); right: var(--space-lg); z-index: 9999;
+  background: var(--surface2); border: 1px solid var(--error);
+  color: var(--text1); padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md); font-size: 13px;
+  opacity: 0; transform: translateY(-10px);
+  transition: all var(--duration-normal) var(--ease-out);
+  pointer-events: none; max-width: 400px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body data-bg="dark" data-accent="rose">
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-container">
+    <div class="loading-ring outer"></div>
+    <div class="loading-ring mid"></div>
+    <div class="loading-ring inner"></div>
+    <div class="loading-dot"></div>
+    <div class="loading-label">正在加载系统</div>
+  </div>
+</div>
+
+<!-- Sidebar Trigger Zone -->
+<div id="sidebar-trigger"></div>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="sidebar-edge"></div>
+  <div class="sidebar-logo">
+    <div class="logo-icon">▶</div>
+    <div class="logo-text">短视频推荐</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">功能导航</div>
+    <div class="nav-item active" data-page="overview"><span class="nav-icon">◈</span> 系统概览</div>
+    <div class="nav-item" data-page="recommend"><span class="nav-icon">◆</span> 推荐系统</div>
+    <div class="nav-item" data-page="heat"><span class="nav-icon">◉</span> 热度预测</div>
+    <div class="nav-item" data-page="vclusters"><span class="nav-icon">◫</span> 视频聚类</div>
+    <div class="nav-item" data-page="uclusters"><span class="nav-icon">◎</span> 用户聚类</div>
+  </nav>
+
+  <!-- Theme Panel — hover to expand -->
+  <div class="sidebar-theme">
+    <div class="theme-panel">
+      <div class="panel-section">
+        <div class="panel-label">背景模式</div>
+        <div class="bg-mode-list">
+          <div class="bg-mode-pill active" data-bg="dark">深色</div>
+          <div class="bg-mode-pill" data-bg="light">亮色</div>
+          <div class="bg-mode-pill" data-bg="slate">石板灰</div>
+          <div class="bg-mode-pill" data-bg="warm">夜间护眼</div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <div class="panel-label">强调色彩</div>
+        <div class="accent-list">
+          <div class="accent-dot rose active" data-accent="rose" title="蔷薇粉"></div>
+          <div class="accent-dot ocean" data-accent="ocean" title="海洋蓝"></div>
+          <div class="accent-dot forest" data-accent="forest" title="森林绿"></div>
+          <div class="accent-dot violet" data-accent="violet" title="紫罗兰"></div>
+          <div class="accent-dot sunset" data-accent="sunset" title="日落橙"></div>
+          <div class="accent-dot mono" data-accent="mono" title="石墨灰"></div>
+        </div>
+      </div>
+    </div>
+    <button class="theme-toggle-btn">🎨 主题设置 <span class="btn-arrow">▾</span></button>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div id="main">
+
+  <!-- ========== Page: Overview ========== -->
+  <div class="page active" id="page-overview">
+    <div class="page-header">
+      <div>
+        <h1>系统概览</h1>
+        <div class="page-subtitle">短视频推荐系统 · 全景数据仪表盘</div>
+      </div>
+      <button class="btn btn-outline" onclick="location.reload()">刷新数据</button>
+    </div>
+    <div class="kpi-grid" id="kpi-cards"></div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><span class="card-title">每日观看量趋势</span></div><div id="chart-daily-views" style="height:320px"></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">视频类别分布</span></div><div id="chart-categories" style="height:320px"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== Page: Recommendations (F3+F4) ========== -->
+  <div class="page" id="page-recommend">
+    <!-- Empty state: centered hero search -->
+    <div id="rec-empty" class="hero-search">
+      <div class="hero-icon">◆</div>
+      <div class="hero-title">个性化推荐引擎</div>
+      <div class="hero-desc">基于 Jaccard 协同过滤 + MMR 多样性重排，为你找到兴趣相似的用户和值得观看的视频</div>
+      <div class="hero-input-group">
+        <input class="input-search" id="rec-user-input" type="number" placeholder="输入用户 ID，如 100" value="100" min="1">
+        <button class="btn btn-primary btn-lg" id="rec-search-btn">开始推荐</button>
+      </div>
+    </div>
+    <!-- Result state -->
+    <div id="rec-result" style="display:none">
+      <div class="page-header">
+        <div><h1>推荐系统</h1><div class="page-subtitle">F3 相似用户分析 · F4 个性化视频推荐</div></div>
+        <div class="search-group">
+          <input class="input-search" id="rec-user-input2" type="number" placeholder="输入用户 ID" value="100" min="1">
+          <button class="btn btn-primary" id="rec-search-btn2">开始推荐</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:var(--space-md)"><div class="card-header"><span class="card-title">用户画像</span></div><div id="rec-profile"></div></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-header"><span class="card-title">相似用户 Top 10</span></div><div class="data-table-wrap" id="rec-similar-table"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">个性化推荐视频</span></div><div class="feed-list" id="rec-feed"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Page: Heat Prediction (F5) ========== -->
+  <div class="page" id="page-heat">
+    <!-- Empty state: centered hero search -->
+    <div id="heat-empty" class="hero-search">
+      <div class="hero-icon">◉</div>
+      <div class="hero-title">视频热度预测</div>
+      <div class="hero-desc">基于 Holt 双参数指数平滑法（α=0.6, β=0.3），预测视频未来 7 天的播放量变化趋势及置信区间</div>
+      <div class="hero-input-group">
+        <input class="input-search" id="heat-video-input" type="number" placeholder="输入视频 ID，如 42" value="42" min="1">
+        <button class="btn btn-primary btn-lg" id="heat-search-btn">分析热度</button>
+      </div>
+    </div>
+    <!-- Result state -->
+    <div id="heat-result" style="display:none">
+      <div class="page-header">
+        <div><h1>热度预测</h1><div class="page-subtitle">F5 视频热度趋势 · Holt 双参数指数平滑法</div></div>
+        <div class="search-group">
+          <input class="input-search" id="heat-video-input2" type="number" placeholder="输入视频 ID" value="42" min="1">
+          <button class="btn btn-primary" id="heat-search-btn2">分析热度</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:var(--space-md)"><div class="card-header"><span class="card-title">视频信息</span></div><div id="heat-video-info"></div></div>
+      <div class="grid-2" style="margin-bottom:var(--space-md)">
+        <div class="card"><div class="card-header"><span class="card-title">热度趋势 · 历史 30 天 + 预测 7 天</span></div><div id="chart-heat" style="height:460px"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">全站热度排行</span></div><div id="heat-ranking-panel" class="ranking-panel"><p style="color:var(--text3);text-align:center;padding:var(--space-xl)">搜索视频后显示排行</p></div></div>
+      </div>
+      <div class="analysis-text" id="heat-analysis"></div>
+    </div>
+  </div>
+
+  <!-- ========== Page: Video Clusters (F6) ========== -->
+  <div class="page" id="page-vclusters">
+    <div class="page-header">
+      <div><h1>视频聚类</h1><div class="page-subtitle">F6 K-Means++ 聚类 · PCA 降维可视化</div></div>
+      <button class="btn btn-outline btn-sm" id="vclusters-reload">重新加载</button>
+    </div>
+    <div id="vclusters-loading" class="state-message"><div class="spinner-inline"></div><div class="state-text">正在加载聚类数据...</div></div>
+    <div id="vclusters-result" style="display:none">
+      <div class="kpi-grid" id="vclusters-kpis"></div>
+      <div class="grid-2">
+        <div class="chart-box"><div id="chart-vclusters" style="height:420px"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">聚类概览</span></div><div class="data-table-wrap" id="vclusters-summary-table"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Page: User Clusters (F7) ========== -->
+  <div class="page" id="page-uclusters">
+    <div class="page-header">
+      <div><h1>用户聚类</h1><div class="page-subtitle">F7 K-Means++ 聚类 · PCA 降维可视化</div></div>
+      <button class="btn btn-outline btn-sm" id="uclusters-reload">重新加载</button>
+    </div>
+    <div id="uclusters-loading" class="state-message"><div class="spinner-inline"></div><div class="state-text">正在加载聚类数据...</div></div>
+    <div id="uclusters-result" style="display:none">
+      <div class="kpi-grid" id="uclusters-kpis"></div>
+      <div class="grid-2">
+        <div class="chart-box"><div id="chart-uclusters" style="height:420px"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">聚类概览</span></div><div class="data-table-wrap" id="uclusters-summary-table"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+/* ============================================================
+   Theme Manager — 背景模式 × 强调色
+   ============================================================ */
+const ThemeManager = {
+  init() {
+    const savedBg = localStorage.getItem('app-bg') || 'dark';
+    const savedAccent = localStorage.getItem('app-accent') || 'rose';
+    this.setBg(savedBg);
+    this.setAccent(savedAccent);
+
+    // BG mode pills
+    document.querySelectorAll('.bg-mode-pill').forEach(pill => {
+      pill.addEventListener('click', () => this.setBg(pill.dataset.bg));
+    });
+    // Accent dots
+    document.querySelectorAll('.accent-dot').forEach(dot => {
+      dot.addEventListener('click', () => this.setAccent(dot.dataset.accent));
+    });
+  },
+  setBg(name) {
+    document.body.dataset.bg = name;
+    localStorage.setItem('app-bg', name);
+    document.querySelectorAll('.bg-mode-pill').forEach(p => p.classList.toggle('active', p.dataset.bg === name));
+    // Re-render charts with new colors
+    if (Router._loaded.overview) loadOverview();
+    if (Router._loaded.vclusters) loadVideoClusters();
+    if (Router._loaded.uclusters) loadUserClusters();
+  },
+  setAccent(name) {
+    document.body.dataset.accent = name;
+    localStorage.setItem('app-accent', name);
+    document.querySelectorAll('.accent-dot').forEach(d => d.classList.toggle('active', d.dataset.accent === name));
+    // Re-render charts
+    if (Router._loaded.overview) loadOverview();
+    if (Router._loaded.vclusters) loadVideoClusters();
+    if (Router._loaded.uclusters) loadUserClusters();
+  }
+};
+
+/* ============================================================
+   Sidebar Controller
+   ============================================================ */
+const Sidebar = {
+  sidebar: document.getElementById('sidebar'),
+  trigger: document.getElementById('sidebar-trigger'),
+  closeTimer: null,
+  init() {
+    this.trigger.addEventListener('mouseenter', () => this.open());
+    this.sidebar.addEventListener('mouseenter', () => this.open());
+    this.sidebar.addEventListener('mouseleave', () => this.scheduleClose());
+  },
+  open() { if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = null; } this.sidebar.classList.add('open'); },
+  scheduleClose() { this.closeTimer = setTimeout(() => { this.sidebar.classList.remove('open'); }, 350); }
+};
+
+/* ============================================================
+   Page Router
+   ============================================================ */
+const Router = {
+  current: 'overview',
+  _loaded: { overview: false, vclusters: false, uclusters: false },
+  init() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => this.navigate(item.dataset.page));
+    });
+  },
+  navigate(page) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navItem) navItem.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) pageEl.classList.add('active');
+    this.current = page;
+    document.getElementById('main').scrollTop = 0;
+    if (page === 'overview' && !this._loaded.overview) { this._loaded.overview = true; loadOverview(); }
+    if (page === 'vclusters' && !this._loaded.vclusters) { this._loaded.vclusters = true; loadVideoClusters(); }
+    if (page === 'uclusters' && !this._loaded.uclusters) { this._loaded.uclusters = true; loadUserClusters(); }
+  }
+};
+
+/* ============================================================
+   API
+   ============================================================ */
+const API = {
+  async get(url) { const res = await fetch(url); const data = await res.json(); if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`); return data; }
+};
+
+function showToast(msg, duration = 3500) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), duration);
+}
+function fmt(n) { return n != null ? Number(n).toLocaleString() : '—'; }
+
+function plotlyLayout(title) {
+  return {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:getComputedStyle(document.body).getPropertyValue('--text2').trim(),family:'Inter, sans-serif',size:12},
+    title:{text:title,font:{size:15,color:getComputedStyle(document.body).getPropertyValue('--text1').trim(),family:'Inter, sans-serif'}},
+    xaxis:{gridcolor:getComputedStyle(document.body).getPropertyValue('--border').trim(),zerolinecolor:getComputedStyle(document.body).getPropertyValue('--borderVisible').trim(),color:getComputedStyle(document.body).getPropertyValue('--text3').trim()},
+    yaxis:{gridcolor:getComputedStyle(document.body).getPropertyValue('--border').trim(),zerolinecolor:getComputedStyle(document.body).getPropertyValue('--borderVisible').trim(),color:getComputedStyle(document.body).getPropertyValue('--text3').trim()},
+    margin:{l:48,r:24,t:40,b:40}, legend:{font:{color:getComputedStyle(document.body).getPropertyValue('--text2').trim()}}, hovermode:'closest'
+  };
+}
+function getAccent() { return getComputedStyle(document.body).getPropertyValue('--accent').trim(); }
+function hexToRgba(hex, alpha) {
+  const el = document.createElement('div'); el.style.color = hex; document.body.appendChild(el);
+  const rgb = getComputedStyle(el).color; document.body.removeChild(el);
+  const m = rgb.match(/[\d.]+/g);
+  return m && m.length >= 3 ? `rgba(${m[0]},${m[1]},${m[2]},${alpha})` : `rgba(128,128,128,${alpha})`;
+}
+
+/* ============================================================
+   Overview
+   ============================================================ */
+async function loadOverview() {
+  try {
+    const d = await API.get('/api/overview');
+    document.getElementById('kpi-cards').innerHTML = [
+      {label:'用户总数',value:fmt(d.total_users),sub:'注册用户'},
+      {label:'视频总量',value:fmt(d.total_videos),sub:'视频库规模'},
+      {label:'观看记录',value:fmt(d.total_logs),sub:'行为数据条数'},
+      {label:'视频聚类数',value:d.video_clusters||'—',sub:`轮廓系数 ${d.video_silhouette?.toFixed(3)||'—'}`},
+      {label:'用户聚类数',value:d.user_clusters||'—',sub:`轮廓系数 ${d.user_silhouette?.toFixed(3)||'—'}`},
+      {label:'互动总数',value:fmt((d.total_likes||0)+(d.total_collects||0)+(d.total_shares||0)),sub:'赞 + 收藏 + 分享'},
+    ].map(k=>`<div class="kpi-card"><div class="kpi-accent-bar"></div><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+
+    if (d.daily_views && d.daily_views.length > 0) {
+      Plotly.newPlot('chart-daily-views', [{type:'scatter',mode:'lines',x:d.daily_views.map(r=>r.watch_date),y:d.daily_views.map(r=>r.count),line:{color:getAccent(),width:2},fill:'tozeroy',fillcolor:hexToRgba(getAccent(),0.08),name:'观看量'}], plotlyLayout('每日观看量'), {displayModeBar:false,responsive:true});
+    }
+
+    if (d.category_counts) {
+      const entries = Object.entries(d.category_counts).sort((a,b)=>b[1]-a[1]);
+      const colors = ['#EA4C89','#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899','#06B6D4','#84CC16','#F97316','#6366F1'];
+      Plotly.newPlot('chart-categories', [{type:'bar',x:entries.map(e=>e[0]),y:entries.map(e=>e[1]),marker:{color:entries.map((_,i)=>colors[i%colors.length]),opacity:0.8},name:'视频数'}], plotlyLayout('视频类别分布'), {displayModeBar:false,responsive:true});
+    }
+  } catch(e) { showToast('加载概览失败: '+e.message); }
+}
+
+/* ============================================================
+   Recommendations (F3+F4)
+   ============================================================ */
+async function searchRecommendations(userIdOverride) {
+  const userId = userIdOverride || document.getElementById('rec-user-input').value.trim();
+  // sync both inputs
+  document.getElementById('rec-user-input').value = userId;
+  const input2 = document.getElementById('rec-user-input2');
+  if (input2) input2.value = userId;
+  if (!userId) { showToast('请输入用户 ID'); return; }
+
+  document.getElementById('rec-empty').style.display = 'none';
+  document.getElementById('rec-result').style.display = 'none';
+
+  try {
+    const d = await API.get(`/api/recommend?user_id=${userId}&top_k=10`);
+    const p = d.user_profile;
+    document.getElementById('rec-profile').innerHTML = p ? `
+      <div class="profile-banner">
+        <div class="profile-avatar" style="font-size:${Math.max(12, 28 - p.user_id.toString().length * 3)}px">${p.user_id}</div>
+        <div class="profile-main">
+          <div class="profile-name">用户 #${p.user_id}</div>
+          <div class="profile-meta">${p.gender||'—'} · ${p.age_group||'—'} · 累计观看 <strong>${fmt(p.watch_count)}</strong> 个视频 · 点赞 <strong>${fmt(p.like_count)}</strong> 次</div>
+          <div class="profile-tags">${(p.interest_categories||[]).map(c=>`<span class="tag">${c}</span>`).join('')}</div>
+        </div>
+      </div>`:'<p style="color:var(--text3)">无用户画像数据</p>';
+
+    const sim = d.similar_users||[];
+    document.getElementById('rec-similar-table').innerHTML = sim.length>0?`<table class="data-table"><thead><tr><th>用户ID</th><th>相似度</th><th>性别</th><th>年龄段</th><th>观看数</th><th>兴趣标签</th></tr></thead><tbody>${sim.map(u=>`<tr><td><span class="badge">${u.user_id}</span></td><td><strong>${(u.similarity*100).toFixed(1)}%</strong></td><td>${u.gender}</td><td>${u.age_group}</td><td>${fmt(u.watch_count)}</td><td>${(u.interest_categories||'').replace(/\|/g,'、')}</td></tr>`).join('')}</tbody></table>`:'<p style="color:var(--text3);padding:var(--space-md)">暂无相似用户数据</p>';
+
+    const recs = d.recommendations||[];
+    document.getElementById('rec-feed').innerHTML = recs.length>0?recs.map((v,i)=>`<div class="feed-item"><div class="feed-rank">${i+1}</div><div class="feed-info"><div class="feed-title">${v.title}</div><div class="feed-meta"><span>${v.category}</span><span>播放 ${fmt(v.heat)}</span><span>${v.reason}</span></div></div><div class="feed-score">${v.score?.toFixed(3)||'—'}</div></div>`).join(''):'<p style="color:var(--text3);padding:var(--space-md)">暂无推荐视频</p>';
+
+    document.getElementById('rec-result').style.display = 'block';
+  } catch(e) {
+    document.getElementById('rec-empty').style.display = 'flex';
+    showToast('推荐查询失败: '+e.message);
+  }
+}
+
+/* ============================================================
+   Heat Prediction (F5)
+   ============================================================ */
+async function searchHeat(videoIdOverride) {
+  const videoId = videoIdOverride || document.getElementById('heat-video-input').value.trim();
+  document.getElementById('heat-video-input').value = videoId;
+  const input2 = document.getElementById('heat-video-input2');
+  if (input2) input2.value = videoId;
+  if (!videoId) { showToast('请输入视频 ID'); return; }
+
+  document.getElementById('heat-empty').style.display = 'none';
+  document.getElementById('heat-result').style.display = 'none';
+
+  try {
+    const [d, a, r] = await Promise.all([
+      API.get(`/api/heat/predict?video_id=${videoId}`),
+      API.get(`/api/heat/analyze?video_id=${videoId}`),
+      API.get(`/api/heat/ranking?video_id=${videoId}&top_n=50`)
+    ]);
+    const info = d.video_info;
+    document.getElementById('heat-video-info').innerHTML = info ? `
+      <div class="video-info-banner">
+        <div class="vi-main">
+          <div class="vi-title">${info.title}</div>
+          <div class="vi-meta">
+            <span>类别 <strong>${info.category||'—'}</strong></span>
+            <span>时长 <strong>${info.duration} 秒</strong></span>
+          </div>
+          <div class="profile-tags" style="margin-top:var(--space-sm)">${(info.tags||'').split('|').filter(t=>t).map(t=>`<span class="tag">${t}</span>`).join('')||'<span style="color:var(--text3)">无标签</span>'}</div>
+        </div>
+      </div>`:'<p style="color:var(--text3)">无视频信息</p>';
+
+    const histDates=(d.history||[]).map(r=>r.date), histVals=(d.history||[]).map(r=>r.play_count);
+    const predDates=(d.prediction||[]).map(r=>r.date), predVals=(d.prediction||[]).map(r=>r.play_count);
+    const upper=(d.prediction||[]).map(r=>r.upper_bound), lower=(d.prediction||[]).map(r=>r.lower_bound);
+    const traces = [{type:'scatter',mode:'lines+markers',x:histDates,y:histVals,name:'历史播放量',line:{color:getComputedStyle(document.body).getPropertyValue('--text2').trim(),width:2},marker:{size:4}}];
+    if (predVals.length>0) {
+      traces.push({type:'scatter',mode:'lines+markers',x:predDates,y:predVals,name:'预测播放量',line:{color:getAccent(),width:2.5,dash:'dash'},marker:{size:6,symbol:'diamond'}});
+      const bandX = [...predDates, ...predDates.slice().reverse()];
+      const bandY = [...upper, ...lower.slice().reverse()];
+      traces.push({type:'scatter',x:bandX,y:bandY,fill:'toself',fillcolor:hexToRgba(getAccent(),0.1),mode:'none',name:'95% 置信区间'});
+    }
+    Plotly.newPlot('chart-heat', traces, plotlyLayout('播放量趋势'), {displayModeBar:true,responsive:true});
+    document.getElementById('heat-analysis').textContent = a.analysis||'';
+
+    // 渲染排行面板
+    const rankList = r.ranking||[];
+    const searchRank = r.searched_rank;
+    document.getElementById('heat-ranking-panel').innerHTML = rankList.length>0 ? `
+      <div class="ranking-header">
+        <span>共 ${fmt(r.total_videos)} 个视频</span>
+        ${searchRank ? `<span class="ranking-badge">当前视频排名 #${searchRank}</span>` : ''}
+      </div>
+      ${rankList.map(item => `
+        <div class="ranking-item ${item.is_searched ? 'searched' : ''}">
+          <span class="rank-num">${item.rank}</span>
+          <span class="rank-title" title="${item.title}">${item.title}</span>
+          <span class="rank-heat">${fmt(item.heat)}</span>
+        </div>
+      `).join('')}
+    `:'<p style="color:var(--text3);text-align:center;padding:var(--space-xl)">暂无排行数据</p>';
+
+    document.getElementById('heat-result').style.display = 'block';
+  } catch(e) {
+    document.getElementById('heat-empty').style.display = 'flex';
+    showToast('热度分析失败: '+e.message);
+  }
+}
+
+/* ============================================================
+   Video Clusters (F6)
+   ============================================================ */
+async function loadVideoClusters() {
+  const loading=document.getElementById('vclusters-loading'), result=document.getElementById('vclusters-result');
+  loading.style.display='flex'; result.style.display='none';
+  try {
+    const d=await API.get('/api/video-clusters?sample=5000');
+    document.getElementById('vclusters-kpis').innerHTML=[{label:'聚类数',value:d.summary?.length||'—',sub:'肘部法则确定'},{label:'视频总数',value:fmt(d.total_videos),sub:'已聚类'},{label:'轮廓系数',value:d.silhouette?.toFixed(4)||'—',sub:'聚类质量评估'},{label:'最大簇',value:d.summary?.[0]?.cluster_name||'—',sub:d.summary?.[0]?.main_category||''}].map(k=>`<div class="kpi-card"><div class="kpi-accent-bar"></div><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+    if (d.points&&d.points.length>0) {
+      const cids=[...new Set(d.points.map(p=>p.cluster_id))].sort();
+      const palette=[getAccent(),'#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899','#06B6D4','#84CC16','#F97316','#6366F1'];
+      Plotly.newPlot('chart-vclusters',cids.map(cid=>{const pts=d.points.filter(p=>p.cluster_id===cid);return {type:'scatter',mode:'markers',name:pts[0]?.cluster_name||`簇${cid}`,x:pts.map(p=>p.x),y:pts.map(p=>p.y),text:pts.map(p=>`${p.title}<br>播放:${fmt(p.watch_count)}`),hoverinfo:'text',hovertemplate:'%{text}<extra></extra>',marker:{size:5,color:palette[cid%palette.length],opacity:0.7}};}),plotlyLayout('视频聚类 PCA 2D'),{displayModeBar:true,responsive:true});
+    }
+    const summary=d.summary||[];
+    document.getElementById('vclusters-summary-table').innerHTML=summary.length>0?`<table class="data-table"><thead><tr><th>簇ID</th><th>簇名称</th><th>主要类别</th><th>视频数</th><th>平均播放</th><th>平均点赞率</th></tr></thead><tbody>${summary.map(s=>`<tr><td><span class="badge">${s.cluster_id}</span></td><td>${s.cluster_name}</td><td>${s.main_category}</td><td>${fmt(s.video_count)}</td><td>${Number(s.avg_watch_count).toFixed(0)}</td><td>${(Number(s.avg_like_rate)*100).toFixed(2)}%</td></tr>`).join('')}</tbody></table>`:'<p style="color:var(--text3);padding:var(--space-md)">暂无数据</p>';
+    loading.style.display='none'; result.style.display='block';
+  } catch(e) { loading.innerHTML=`<div class="state-icon">⚠</div><div class="state-text">加载失败: ${e.message}</div>`; }
+}
+
+/* ============================================================
+   User Clusters (F7)
+   ============================================================ */
+async function loadUserClusters() {
+  const loading=document.getElementById('uclusters-loading'), result=document.getElementById('uclusters-result');
+  loading.style.display='flex'; result.style.display='none';
+  try {
+    const d=await API.get('/api/user-clusters?sample=5000');
+    document.getElementById('uclusters-kpis').innerHTML=[{label:'聚类数',value:d.summary?.length||'—',sub:'肘部法则确定'},{label:'用户总数',value:fmt(d.total_users),sub:'已聚类'},{label:'轮廓系数',value:d.silhouette?.toFixed(4)||'—',sub:'聚类质量评估'},{label:'最大兴趣群',value:d.summary?.[0]?.cluster_name||'—',sub:d.summary?.[0]?.main_interest||''}].map(k=>`<div class="kpi-card"><div class="kpi-accent-bar"></div><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+    if (d.points&&d.points.length>0) {
+      const cids=[...new Set(d.points.map(p=>p.cluster_id))].sort();
+      const palette=[getAccent(),'#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899','#06B6D4','#84CC16'];
+      Plotly.newPlot('chart-uclusters',cids.map(cid=>{const pts=d.points.filter(p=>p.cluster_id===cid);return {type:'scatter',mode:'markers',name:pts[0]?.cluster_name||`簇${cid}`,x:pts.map(p=>p.x),y:pts.map(p=>p.y),text:pts.map(p=>`用户${p.user_id}<br>${p.gender}·${p.age_group}<br>观看:${fmt(p.watch_count)}`),hoverinfo:'text',hovertemplate:'%{text}<extra></extra>',marker:{size:5,color:palette[cid%palette.length],opacity:0.7}};}),plotlyLayout('用户聚类 PCA 2D'),{displayModeBar:true,responsive:true});
+    }
+    const summary=d.summary||[];
+    document.getElementById('uclusters-summary-table').innerHTML=summary.length>0?`<table class="data-table"><thead><tr><th>簇ID</th><th>簇名称</th><th>主要兴趣</th><th>Top3兴趣</th><th>用户数</th><th>平均观看</th></tr></thead><tbody>${summary.map(s=>`<tr><td><span class="badge">${s.cluster_id}</span></td><td>${s.cluster_name}</td><td>${s.main_interest}</td><td>${s.top3_interests||'—'}</td><td>${fmt(s.user_count)}</td><td>${Number(s.avg_watch_count).toFixed(1)}</td></tr>`).join('')}</tbody></table>`:'<p style="color:var(--text3);padding:var(--space-md)">暂无数据</p>';
+    loading.style.display='none'; result.style.display='block';
+  } catch(e) { loading.innerHTML=`<div class="state-icon">⚠</div><div class="state-text">加载失败: ${e.message}</div>`; }
+}
+
+/* ============================================================
+   Init
+   ============================================================ */
+async function init() {
+  ThemeManager.init();
+  Sidebar.init();
+  Router.init();
+
+  // Rec search — primary (centered) + secondary (top bar)
+  document.getElementById('rec-search-btn').addEventListener('click', ()=>searchRecommendations());
+  document.getElementById('rec-user-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchRecommendations();});
+  document.getElementById('rec-search-btn2').addEventListener('click', ()=>{searchRecommendations(document.getElementById('rec-user-input2').value.trim());});
+  document.getElementById('rec-user-input2').addEventListener('keydown',e=>{if(e.key==='Enter')searchRecommendations(document.getElementById('rec-user-input2').value.trim());});
+
+  // Heat search — primary (centered) + secondary (top bar)
+  document.getElementById('heat-search-btn').addEventListener('click', ()=>searchHeat());
+  document.getElementById('heat-video-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchHeat();});
+  document.getElementById('heat-search-btn2').addEventListener('click', ()=>{searchHeat(document.getElementById('heat-video-input2').value.trim());});
+  document.getElementById('heat-video-input2').addEventListener('keydown',e=>{if(e.key==='Enter')searchHeat(document.getElementById('heat-video-input2').value.trim());});
+
+  document.getElementById('vclusters-reload').addEventListener('click', loadVideoClusters);
+  document.getElementById('uclusters-reload').addEventListener('click', loadUserClusters);
+
+  await loadOverview();
+  Router._loaded.overview = true;
+  setTimeout(()=>{ document.getElementById('loading-screen').classList.add('hidden'); }, 600);
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
